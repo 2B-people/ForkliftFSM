@@ -9,5 +9,10 @@
         "/home/nqq/fuel_ws/devel/lib/python2.7/dist-packages",
         "/opt/ros/melodic/lib/python2.7/dist-packages",
         "./scripts"
-    ]
+    ],
+    "ros.distro": "melodic",
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.autopep8"
+    },
+    "python.formatting.provider": "none"
 }

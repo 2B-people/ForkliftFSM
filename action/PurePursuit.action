@@ -1,0 +1,15 @@
+# pure pursuit action
+# Goal
+float64[2] start_xy
+float64[2] end_xy
+---
+# Result
+int32 status
+float64[2] final_xy
+float64[2] final_theta
+---
+# Feedback
+int32 status
+float64[2] cur_xy
+float64 cur_theta
+bool car_head

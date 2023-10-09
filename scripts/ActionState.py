@@ -30,10 +30,10 @@ class PurePursuitstate(smach.State):
 		goal.end_xy = [userdata.start_x,userdata.start_y]
 		self.client.send_goal(goal)
 		rospy.loginfo("Sending goal: {goal}".format(goal=goal))
-		self.client.wait_for_result()
 
-		# 定期检查是否有抢占请求
+		# 循环等待被抢占或者动作执行完成
 		while not rospy.is_shutdown():
+			rospy.loginfo("Checking preempt")
 			if self.preempt_requested():
 				# 如果有抢占请求，则停止当前的动作执行，并返回preempted状态
 				self.client.cancel_goal()
@@ -46,5 +46,12 @@ class PurePursuitstate(smach.State):
 				return 'failed'
 
 			rospy.sleep(0.1)
+
+	def request_preempt(self):
+		"""Overload the preempt request method just to spew an error."""
+		smach.State.request_preempt(self)
+		rospy.logwarn("Preempted!")
+
+class
 
 

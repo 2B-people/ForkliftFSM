@@ -4,10 +4,12 @@
 import rospy
 import threading
 
+import smach
 from smach import StateMachine, Concurrence
 from smach_ros import ServiceState, SimpleActionState, IntrospectionServer,set_preempt_handler, MonitorState
 
 from ActionState import PurePursuitstate
+from APIService import serviceServer
 
 
 class IDLE_state(smach.State):
@@ -28,39 +30,36 @@ def main():
 	rospy.init_node("Forkift_fsm_node")
 	rospy.loginfo("Forkift_fsm_node started")
 
+	# Create a service server
+	srv = serviceServer()
+
 	# Create a SMACH state machine
 	sm_root = StateMachine(outcomes=['succeeded', 'failed', 'preempted'])
 	 
 	with sm_root:
 		StateMachine.add('IDLE', IDLE_state(),
 						 transitions={'succeeded':'nav_cc'})
-		
-		nav_cc = Concurrence(outcomes=['succeeded','aborted','preempted'],
-							   default_outcome='aborted',
-							   outcome_map ={'succeeded':{'nav_state':'succeeded','SMALL':'succeeded'}})
-		
-		StateMachine.add('nav_cc',nav_cc)
-
-		with nav_cc:
-			Concurrence.add('nav_state',PurePursuitstate(),
-						  transitions={'succeeded':'IDLE'})
-
+		StateMachine.add('nav_cc', PurePursuitstate(),
+						 transitions={'succeeded':'IDLE'})
 	
-		
 
 	# Attach a SMACH introspection server
 	sis = IntrospectionServer('smach_usecase_01', sm_root, '/USE_CASE')
 	sis.start()
 	
 	# Set preempt handler
-	# set_preempt_handler(sm_root)
+	set_preempt_handler(sm_root)
 
 	# Execute SMACH tree in a separate thread so that we can ctrl-c the script
 	smach_thread = threading.Thread(target = sm_root.execute)
 	smach_thread.start()
 
+	rate = rospy.Rate(10) # 10hz
 	# Signal ROS shutdown (kill threads in background)
-	rospy.spin()
+	while not rospy.is_shutdown():
+		active_states = sm_root.get_active_states()
+		rospy.set_param('active_states',active_states)
+		rate.sleep()
 
 	sis.stop()
 		

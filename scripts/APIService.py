@@ -16,7 +16,7 @@ class serviceServer():
 		rospy.set_param("test_car_state",10)
 
 	
-	def empty_service_callback(request):
+	def empty_service_callback(self,request):
 		"""
 		Callback function for the empty service.
 

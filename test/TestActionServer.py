@@ -14,6 +14,7 @@ def pure_pursuit_callback(goal):
     result = PurePursuitResult()
 
     # TODO: Implement Pure Pursuit algorithm
+    rospy.sleep(2.0)
 
     # Set final position and orientation in result
     result.status = 1
@@ -26,7 +27,7 @@ def pure_pursuit_callback(goal):
 
 if __name__ == '__main__':
     # Initialize node
-    rospy.init_node('pure_pursuit_server')
+    rospy.init_node('test_action_server')
 
     # Create action server
     server = actionlib.SimpleActionServer('pure_pursuit', PurePursuitAction, pure_pursuit_callback, False)

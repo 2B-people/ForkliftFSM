@@ -6,7 +6,7 @@ float64[2] end_xy
 # Result
 int32 status
 float64[2] final_xy
-float64[2] final_theta
+float64 final_theta
 ---
 # Feedback
 int32 status

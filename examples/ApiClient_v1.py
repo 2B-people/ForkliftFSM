@@ -2,14 +2,35 @@
 # -*- coding: utf-8 -*-
 
 import rospy
-from std_srvs.srv import Empty
+from std_srvs.srv import Empty,SetBool
 
 
 class CallFSM():
     def __init__(self):
         # service的初始化
-        self.call_fsm = rospy.ServiceProxy('fsm_node/test_empty', Empty)
-        self.call_fsm.wait_for_service()
+        # 测试用的空请求
+        self.call_empty = rospy.ServiceProxy('fsm_node/test_empty', Empty)
+        self.call_empty.wait_for_service()
+        # 请求任务的接口
+        # idle->task
+        self.call_task = rospy.ServiceProxy('fsm_node/fsm_task', SetBool)
+        self.call_task.wait_for_service()
+
+        #独立调用action的接口
+        # idle->nav
+        self.call_nav = rospy.ServiceProxy('fsm_node/fsm_nav', SetBool)
+        self.call_nav.wait_for_service()
+        # idle->relocation
+        self.call_relocation = rospy.ServiceProxy('fsm_node/fsm_relocation', SetBool)
+        self.call_relocation.wait_for_service()
+        # idle->pickup
+        self.call_pickup = rospy.ServiceProxy('fsm_node/fsm_pickup', SetBool)
+        self.call_pickup.wait_for_service()
+        # idle->charge
+        self.call_charge = rospy.ServiceProxy('fsm_node/fsm_charge', SetBool)
+        self.call_charge.wait_for_service()
+
+
     
     # 使用ros的service接口调用状态机的测试接口
     # 这里用了一个不带参数的空请求进行测试
@@ -18,7 +39,7 @@ class CallFSM():
         调用测试接口
         """
         try:
-            response = self.call_fsm()
+            response = self.call_empty()
             rospy.loginfo("send req")
             return response
         except rospy.ServiceException as e:
@@ -44,6 +65,18 @@ class CallFSM():
         else:
             rospy.logwarn("Parameter [%s] not found, defaulting to %.3f" % (name, default))
             return default
+        
+    # 读取状态机当前正在执行的状态
+    # 如果返回NONE，表示状态机没有启动
+    # 返回状态：TODO状态列表
+    def get_active_state(self):
+        """
+        获取状态机的状态
+        """
+        if rospy.has_param("fsm_node/active_states"):
+            return self.get_param("fsm_node/active_states","NONE")
+        else:
+            rospy.logerr("fsm not start")
 
 
 if __name__ == '__main__':

@@ -4,7 +4,7 @@
 import rospy
 import smach
 
-from ActionState import PurePursuitstate
+from ActionState import PurePursuitState
 
 
 class NavStateMachine(smach.StateMachine):
@@ -12,7 +12,7 @@ class NavStateMachine(smach.StateMachine):
 		# TODO: 初始化导航任务子状态机
 		smach.StateMachine.__init__(self, outcomes=['succeeded', 'failed', 'preempted'])
 		with self:
-			smach.StateMachine.add('NAV', PurePursuitstate(),
+			smach.StateMachine.add('NAV', PurePursuitState(),
 								   transitions={'succeeded': 'succeeded', 'failed': 'failed', 'preempted': 'preempted'})
 
 

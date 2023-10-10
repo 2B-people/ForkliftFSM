@@ -4,6 +4,7 @@
 import rospy
 import smach
 from std_srvs.srv import Empty, EmptyResponse
+from std_srvs.srv import SetBool, SetBoolResponse
 
 class serviceServer():
 	def __init__(self):
@@ -11,26 +12,101 @@ class serviceServer():
 		Initialize the service and register the callback function.
 		Also initialize the parameter server to share parameters across the state machine.
 		"""
+		# 测试用的空请求
 		rospy.Service("fsm_node/test_empty",Empty, self.empty_service_callback)
-		rospy.loginfo("Empty service server is ready.")
+		# 请求任务的接口，可以使得状态机转移到任务状态
+		rospy.Service("fsm_node/fsm_task",SetBool, self.task_service_callback)
+		rospy.Service("fsm_node/fsm_nav",SetBool, self.nav_service_callback)
+		rospy.Service("fsm_node/fsm_relocation",SetBool, self.relocation_service_callback)
+		rospy.Service("fsm_node/fsm_pickup",SetBool, self.pickup_service_callback)
+		rospy.Service("fsm_node/fsm_charge",SetBool, self.charge_service_callback)
+
+		rospy.loginfo("service server is ready.")
+
+		self.call_set = "IDLE"
+
 		rospy.set_param("test_car_state",10)
 
+	# 读取call_set的值
+	def Get_Call(self):
+		return self.call_set
+
+	def Call_Finish(self):
+		self.call_set = "IDLE"
 	
+	# 慎用，这里只是测试，call_set的值应该由回调函数设置
+	def Set_Call(self,call_set):
+		rospy.logwarn("call_set is set to %s",call_set)
+		self.call_set = call_set
+
+	# 测试用接口
 	def empty_service_callback(self,request):
-		"""
-		Callback function for the empty service.
-
-		This function is called when an empty service request is received. It logs a message indicating that an empty request
-		was received, performs some action, and returns an empty response.
-
-		Args:
-			request: An empty request object.
-
-		Returns:
-			An empty response object.
-		"""
 		rospy.loginfo("Received an empty request. Performing some action.")
 		return EmptyResponse()
+	
+	# 执行任务调用
+	def task_service_callback(self,request):
+
+		if request.data:
+			if self.call_set == "IDLE":
+				self.call_set = "TASK"
+				return SetBoolResponse(True,"task request received")	
+			else:
+				rospy.logwarn("call task request is true, but fsm is not IDLE")	
+				return SetBoolResponse(False,"fsm is not IDLE")
+		else:
+			rospy.logwarn("call task request is false")
+			return SetBoolResponse(False,"call task request is false")
+
+	# 单独动作调用
+	def nav_service_callback(self,request):
+		if request.data:
+			if self.call_set == "IDLE":
+				self.call_set = "NAV"
+				return SetBoolResponse(True,"task request received")	
+			else:
+				rospy.logwarn("call task request is true, but fsm is not IDLE")	
+				return SetBoolResponse(False,"fsm is not IDLE")
+		else:
+			rospy.logwarn("call task request is false")
+			return SetBoolResponse(False,"call task request is false")
+
+	def relocation_service_callback(self,request):
+		if request.data:
+			if self.call_set == "IDLE":
+				self.call_set = "RELOC"
+				return SetBoolResponse(True,"task request received")	
+			else:
+				rospy.logwarn("call task request is true, but fsm is not IDLE")	
+				return SetBoolResponse(False,"fsm is not IDLE")
+		else:
+			rospy.logwarn("call task request is false")
+			return SetBoolResponse(False,"call task request is false")
+
+	def pickup_service_callback(self,request):
+		if request.data:
+			if self.call_set == "IDLE":
+				self.call_set = "PICKUP"
+				return SetBoolResponse(True,"task request received")	
+			else:
+				rospy.logwarn("call task request is true, but fsm is not IDLE")	
+				return SetBoolResponse(False,"fsm is not IDLE")
+		else:
+			rospy.logwarn("call task request is false")
+			return SetBoolResponse(False,"call task request is false")
+
+	def charge_service_callback(self,request):
+		if request.data:
+			if self.call_set == "IDLE":
+				self.call_set = "CHARGE"
+				return SetBoolResponse(True,"task request received")	
+			else:
+				rospy.logwarn("call task request is true, but fsm is not IDLE")	
+				return SetBoolResponse(False,"fsm is not IDLE")
+		else:
+			rospy.logwarn("call task request is false")
+			return SetBoolResponse(False,"call task request is false")
+
 	
 
 

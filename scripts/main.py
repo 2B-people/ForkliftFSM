@@ -8,22 +8,57 @@ import smach
 from smach import StateMachine, Concurrence
 from smach_ros import ServiceState, SimpleActionState, IntrospectionServer,set_preempt_handler, MonitorState
 
-from ActionState import PurePursuitstate
+from ActionState import PurePursuitState
 from APIService import serviceServer
 
 
-class IDLE_state(smach.State):
-	def __init__(self):
-		smach.State.__init__(self, outcomes=['succeeded', 'failed', 'preempted'],
-					   output_keys=['start_x', 'start_y'])
+class IDLEState(smach.State,):
+	def __init__(self,srv):
+		# 该状态的转移条件
+		smach.State.__init__(self, outcomes=
+					   ['task_call','nav_call','reloc_call','pickup_call','charge_call','preempted'],
+						output_keys=['start_x', 'start_y'])
+		# srv调用
+		self.srv = srv
 
 	def execute(self,userdata):
 		rospy.loginfo('Executing state 1')
-		rospy.sleep(1)
 		rospy.set_param('start_x',1)
 		rospy.set_param('start_y',1)
 		userdata.start_x = 1
 		userdata.start_y = 1
+
+		while not rospy.is_shutdown():
+			if self.preempt_requested():
+				# 如果有抢占请求，则停止当前的动作执行，并返回preempted状态
+				self.service_preempt()
+				return 'preempted'
+
+			call_condition= self.srv.Get_Call()
+			if call_condition != "IDLE":
+				rospy.loginfo("call_condition is %s",call_condition)
+				if call_condition == 'TASK':
+					self.srv.Call_Finish()
+					return 'task_call'
+				if call_condition == 'NAV':
+					self.srv.Call_Finish()
+					return 'nav_call'
+				if call_condition == 'RELOC':
+					self.srv.Call_Finish()
+					return 'reloc_call'
+				if call_condition == 'PICKUP':
+					self.srv.Call_Finish()
+					return 'pickup_call'
+				if call_condition == 'CHARGE':
+					self.srv.Call_Finish()
+					return 'charge_call'
+	
+class ReSetState(smach.State):
+	def __init__(self):
+		smach.State.__init__(self, outcomes=['succeeded', 'failed', 'preempted'])
+	def execute(self,userdata):
+		rospy.loginfo('Executing state1')
+		rospy.sleep(1)
 		return 'succeeded'
 
 def main():
@@ -37,14 +72,18 @@ def main():
 	sm_root = StateMachine(outcomes=['succeeded', 'failed', 'preempted'])
 	 
 	with sm_root:
-		StateMachine.add('IDLE', IDLE_state(),
-						 transitions={'succeeded':'nav_cc'})
-		StateMachine.add('nav_cc', PurePursuitstate(),
-						 transitions={'succeeded':'IDLE'})
+		StateMachine.add('IDLE', IDLEState(srv),
+					transitions={'task_call':'state1','nav_call':'nav_cc',
+				  				'reloc_call':'failed','pickup_call':'failed',
+								'charge_call':'failed','preempted':'preempted'})
+		StateMachine.add('state1', state1(), 
+				   transitions={'succeeded':'IDLE','preempted':'preempted'})
+		StateMachine.add('nav_cc', PurePursuitState(), 
+				   transitions={'succeeded':'IDLE','preempted':'preempted'})
 	
 
 	# Attach a SMACH introspection server
-	sis = IntrospectionServer('smach_usecase_01', sm_root, '/USE_CASE')
+	sis = IntrospectionServer('fsm_node', sm_root, '/SM_ROOT')
 	sis.start()
 	
 	# Set preempt handler
@@ -58,15 +97,12 @@ def main():
 	# Signal ROS shutdown (kill threads in background)
 	while not rospy.is_shutdown():
 		active_states = sm_root.get_active_states()
-		rospy.set_param('active_states',active_states)
+		rospy.set_param('fsm_node/active_states',active_states)
 		rate.sleep()
 
 	sis.stop()
-		
-
-
-
-
+	
+	
 if __name__ == '__main__':
 	main()
 

@@ -26,21 +26,16 @@ class RESETState(smach.State):
 			#TODO: 重置状态机
 			return 'succeeded'
 
-class IDLEState(smach.State,):
+class IDLEState(smach.State):
 	def __init__(self,srv):
 		# 该状态的转移条件
 		smach.State.__init__(self, outcomes=
-					   ['task_call','nav_call','reloc_call','pickup_call','charge_call','preempted'],
-						output_keys=['start_x', 'start_y'])
+					   ['task_call','nav_call','reloc_call','pickup_call','charge_call','preempted'])
 		# srv调用
 		self.srv = srv
 
 	def execute(self,userdata):
-		rospy.loginfo('Executing state 1')
-		rospy.set_param('start_x',1)
-		rospy.set_param('start_y',1)
-		userdata.start_x = 1
-		userdata.start_y = 1
+		rospy.loginfo('IDLE state is running')
 
 		while not rospy.is_shutdown():
 			if self.preempt_requested():
@@ -66,6 +61,23 @@ class IDLEState(smach.State,):
 				if call_condition == 'CHARGE':
 					self.srv.Call_Finish()
 					return 'charge_call'
+				
+class SuperVisionState(smach.State):
+	def __init__(self):
+		smach.State.__init__(self, outcomes=["preempted"])
+		# TODO 监控状态，这里直接用socket链接
+	
+	def execute(self,userdata):
+		rospy.loginfo('SuperVision state is running')
+
+		# TODO SuperVision状态，监控整个机器人的状态
+		while not rospy.is_shutdown():
+			if self.preempt_requested():
+				# 如果有抢占请求，则停止当前的动作执行，并返回preempted状态
+				self.service_preempt()
+				return 'preempted'
+			
+			# TODO 出现问题这里直接退出preempted
 
 def main():
 	rospy.init_node("Forkift_fsm_node")
@@ -78,32 +90,46 @@ def main():
 	sm_root = StateMachine(outcomes=['succeeded', 'failed', 'preempted'])
 	sm_task = StateMachine(outcomes=['succeeded', 'failed', 'preempted'])
 	
+	shape_cc = Concurrence(outcomes=['succeeded','failed','preempted'],
+							   default_outcome='failed',
+							   outcome_map ={'preempted':{'SuperVision':'preempted','sm_task':'preempted'}})
+
+
 	with sm_root:
+		# 添加重启态
 		StateMachine.add('RESET', RESETState(), 
-				   transitions={'succeeded':'sm_task','preempted':'preempted'})
-		StateMachine.add('sm_task', sm_task,
-				   transitions={'failed':'RESET','preempted':'preempted'})
-	with sm_task:
-		StateMachine.add('IDLE', IDLEState(srv),
+				   transitions={'succeeded':'RUN_SHAPES','preempted':'preempted'})
+		# 重启后开始main循环
+		with shape_cc:
+			# 添加并行态，并行task和监视状态	
+			Concurrence.add('SuperVision',SuperVisionState())
+			Concurrence.add("sm_task", sm_task)
+			with sm_task:
+				StateMachine.add('IDLE', IDLEState(srv),
 					transitions={'task_call':'task','nav_call':'nav_cc',
 				  				'reloc_call':'reloc_cc','pickup_call':'pickup_cc',
 								'charge_call':'charge_cc','preempted':'preempted'})
-		# 调用task	
-		StateMachine.add('task', TaskStateMachine(),
+				# 调用task	
+				StateMachine.add('task', TaskStateMachine(),
 				    transitions={'succeeded':'IDLE','preempted':'preempted'})
 
-		# 调用单独的动作action
-		StateMachine.add('nav_cc', PurePursuitState(), 
+				# 调用单独的动作action
+				StateMachine.add('nav_cc', PurePursuitState(), 
 				   transitions={'succeeded':'IDLE','preempted':'preempted'})
-	
-		StateMachine.add('reloc_cc', ReLocationState(), 
+				# 重定位
+				StateMachine.add('reloc_cc', ReLocationState(), 
+				   transitions={'succeeded':'IDLE','preempted':'preempted'})
+				# 取
+				StateMachine.add('pickup_cc', PickupState(),
+				   transitions={'succeeded':'IDLE','preempted':'preempted'})
+				#充电
+				StateMachine.add('charge_cc', ChargeState(),
 				   transitions={'succeeded':'IDLE','preempted':'preempted'})
 
-		StateMachine.add('pickup_cc', PickupState(),
-				   transitions={'succeeded':'IDLE','preempted':'preempted'})
-		
-		StateMachine.add('charge_cc', ChargeState(),
-				   transitions={'succeeded':'IDLE','preempted':'preempted'})
+		# 并行态出问题到reset中
+		StateMachine.add('RUN_SHAPES',shape_cc,transitions={'preempted':'RESET'})
+	
+	
 
 	# Attach a SMACH introspection server
 	sis = IntrospectionServer('fsm_node', sm_root, '/SM_ROOT')

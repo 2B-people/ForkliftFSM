@@ -7,28 +7,32 @@ import smach_ros
 import actionlib
 from ForkliftFSM.msg import PurePursuitAction,PurePursuitGoal
 
-
+# DONE
 class PurePursuitState(smach.State):
 	def __init__(self):
-		smach.State.__init__(self, outcomes=['succeeded', 'failed', 'preempted'], input_keys=['start_x', 'start_y'])
+		smach.State.__init__(self, outcomes=['succeeded', 'failed', 'preempted'])
 		self.client = actionlib.SimpleActionClient('pure_pursuit', PurePursuitAction)
 		self.client.wait_for_server()
 
 	def execute(self, userdata):
-		"""
-		Sends a goal to the PurePursuitAction server and waits for the result.
+		rospy.loginfo("pure_pursuit state is running")
 
-		Args:
-		- userdata: user-defined data passed between states
+		end_x = 0.0
+		end_y = 0.0
 
-		Returns:
-		- 'succeeded' if the goal is successfully completed
-		- 'preempted' if the state is preempted by another state
-		- 'failed' if the goal is aborted
-		"""
+		# 取出目标点设置
+		if rospy.has_param("fsm_node/end_x") and  rospy.has_param("fsm_node/end_y"):
+			end_x = rospy.get_param("fsm_node/end_x")	
+			end_y =rospy.get_param("fsm_node/end_y")
+		else:
+			rospy.logerr("No end point set!")
+			return 'failed'
+		
+		# 发送目标点开始执行导航任务
 		goal = PurePursuitGoal()
-		goal.end_xy = [userdata.start_x,userdata.start_y]
-		self.client.send_goal(goal)
+		goal.end_xy = [end_x,end_y]
+		# 状态机发送目标点，注册反馈函数
+		self.client.send_goal(goal,feedback_cb=self.feedback_cb)
 		rospy.loginfo("Sending goal: {goal}".format(goal=goal))
 
 		# 循环等待被抢占或者动作执行完成
@@ -38,6 +42,7 @@ class PurePursuitState(smach.State):
 				self.client.cancel_goal()
 				self.service_preempt()
 				return 'preempted'
+			feekback = self.client.get
 
 			if self.client.get_state() == actionlib.GoalStatus.SUCCEEDED:
 				return 'succeeded'
@@ -46,8 +51,11 @@ class PurePursuitState(smach.State):
 
 			rospy.sleep(0.1)
 
+	def feedback_cb(self, feedback):
+		rospy.loginfo("Received feedback: {feedback}".format(feedback=feedback))
+
+
 	def request_preempt(self):
-		"""Overload the preempt request method just to spew an error."""
 		smach.State.request_preempt(self)
 		rospy.logwarn("Preempted!")
 
@@ -59,7 +67,7 @@ class ReLocationState(smach.State):
 		# self.client.wait_for_server()
 
 	def execute(self, userdata):
-		# send goal	
+		# TODO 发送action
 
 		# 循环等待被抢占或者动作执行完成
 		while not rospy.is_shutdown():
@@ -69,12 +77,15 @@ class ReLocationState(smach.State):
 				self.service_preempt()
 				return 'preempted'
 
+			# 下面是测试代码
+			rospy.sleep(1)
+			return 'succeeded'
+
+			# TODO重定位action的状态，结束确认
 			# if self.client.get_state() == actionlib.GoalStatus.SUCCEEDED:
 			# 	return 'succeeded'
 			# elif self.client.get_state() == actionlib.GoalStatus.ABORTED:
 			# 	return 'failed'
-
-			rospy.sleep(0.1)
 
 class PickupState(smach.State):
 	# TODO: 拾取的状态机
@@ -84,7 +95,30 @@ class PickupState(smach.State):
 		# self.client.wait_for_server()
 
 	def execute(self, userdata):
-		# send goal	
+		rospy.loginfo("Pickup state is running")
+		
+		is_pickup = 0
+
+		# 取出目标点设置
+		if rospy.has_param("fsm_node/is_pickup"):
+			is_pickup = rospy.get_param("fsm_node/is_pickup")	
+		else:
+			rospy.logerr("No end point set!")
+			return 'failed'
+		
+		# TODO这里需要发送取货或者卸货的动作
+		if is_pickup == 1:
+			# 取货
+			rospy.loginfo("Pickup")
+		elif is_pickup == 2:
+			#卸货
+			rospy.loginfo("Dropoff")
+		elif is_pickup == 0:
+			# 无动作
+			rospy.loginfo("No action")
+		else:
+			rospy.logerr("get error")
+			return 'failed'
 
 		# 循环等待被抢占或者动作执行完成
 		while not rospy.is_shutdown():
@@ -93,16 +127,20 @@ class PickupState(smach.State):
 				# self.client.cancel_goal()
 				self.service_preempt()
 				return 'preempted'
+			
+			# 下面是测试代码
+			rospy.sleep(0.1)
+			return 'succeeded'
 
+			# TODO拾取action的状态，结束确认
 			# if self.client.get_state() == actionlib.GoalStatus.SUCCEEDED:
 			# 	return 'succeeded'
 			# elif self.client.get_state() == actionlib.GoalStatus.ABORTED:
 			# 	return 'failed'
 
-			rospy.sleep(0.1)
 
 class ChargeState(smach.State):
-	# TODO: 拾取的状态机
+	# TODO: 充电的状态机
 	def __init__(self):
 		smach.State.__init__(self, outcomes=['succeeded', 'failed', 'preempted'])
 		# self.client = actionlib.SimpleActionClient('re_location', PurePursuitAction)
@@ -124,4 +162,5 @@ class ChargeState(smach.State):
 			# elif self.client.get_state() == actionlib.GoalStatus.ABORTED:
 			# 	return 'failed'
 
-			rospy.sleep(0.1)	
+			rospy.sleep(0.1)
+			return 'succeeded'

@@ -29,8 +29,6 @@ class CallFSM():
         self.call_charge = rospy.ServiceProxy('fsm_node/fsm_charge', SetBool)
         self.call_charge.wait_for_service()
 
-
-    
     # 使用ros的service接口调用状态机的测试接口
     # 这里用了一个不带参数的空请求进行测试
     def CallTestEmpty(self):
@@ -42,8 +40,90 @@ class CallFSM():
             rospy.loginfo("send req")
             return response
         except rospy.ServiceException as e:
-            rospy.logerr("Service call failed:")
+            rospy.logerr("TestEmpty Service call failed:")
             return None
+    
+    #调用任务接口
+    def CallTask(self,pickup_xy,dropoff_xy):
+        """
+        Calls the task interface with the given pickup and dropoff coordinates.
+        Args:
+            pickup_xy (tuple): A tuple containing the x and y coordinates of the pickup point.
+            dropoff_xy (tuple): A tuple containing the x and y coordinates of the dropoff point.
+        Returns:
+            The response from the task service call, or None if the call failed.
+        """
+        try:
+            rospy.set_param("fsm_node/pickup_x",pickup_xy[0])
+            rospy.set_param("fsm_node/pickup_y",pickup_xy[1])
+            rospy.set_param("fsm_node/dropoff_x",dropoff_xy[0])
+            rospy.set_param("fsm_node/dropoff_y",dropoff_xy[1])
+            response = self.call_task(True)
+            return response
+        except rospy.ServiceException as e:
+            rospy.logerr("Task Service call failed:")
+            return None
+    # 调用导航动作接口
+    def CallNav(self,end_xy):
+        """
+        Calls the navigation interface with the given end coordinates.
+        Args:
+            end_xy (tuple): A tuple containing the x and y coordinates of the end point.
+        Returns:
+            The response from the navigation service call, or None if the call failed.
+        """
+        try:
+            rospy.set_param("fsm_node/end_x",end_xy[0])
+            rospy.set_param("fsm_node/end_y",end_xy[1])
+            response = self.call_nav(True)
+            return response                     
+        except rospy.ServiceException as e:
+            rospy.logerr("Nav Service call failed:")
+            return None
+    # 调用二次定位接口
+    def CallRelocation(self):
+        """
+        Calls the relocation interface.
+        Returns:
+            The response from the relocation service call, or None if the call failed.
+        """
+        try:
+            response = self.call_relocation(True)
+            return response
+        except rospy.ServiceException as e:
+            rospy.logerr("Relocation Service call failed:")
+            return None
+    # 调用取货接口
+    def CallPickup(self,is_pickup): 
+        """
+        Calls the pickup interface.
+        Args:
+            is_pickup (uint8): 
+            1 if the robot should pick up the object, 1取货
+            2 if it should drop it off.2卸货
+        Returns:
+            The response from the pickup service call, or None if the call failed.
+        """
+        try:
+            rospy.set_param("fsm_node/is_pickup",is_pickup)
+            response = self.call_pickup(True)
+            return response
+        except rospy.ServiceException as e:
+            rospy.logerr("Pickup Service call failed:")
+            return None
+    # 调用充电接口 
+    def CallCharge(self):
+        """
+        Calls the charge interface.
+        Returns:
+            The response from the charge service call, or None if the call failed.
+        """
+        try:
+            response = self.call_charge(True)
+            return response
+        except rospy.ServiceException as e:
+            rospy.logerr("Charge Service call failed:")
+            return None   
 
     # 使用ros的参数服务器状态机提供接口读取叉车的状态
     # 注意，这里禁止设置参数，只能读取参数，需要修改，需要调用状态机的srv接口

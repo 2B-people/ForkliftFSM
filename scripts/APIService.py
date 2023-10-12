@@ -40,7 +40,6 @@ class serviceServer():
 	def Set_Call(self,call_set):
 		rospy.logwarn("call_set is set to %s",call_set)
 		self.call_set = call_set
-
 	
 	# 任务调用改变call_set的值
 	def call_change_set(self,set):

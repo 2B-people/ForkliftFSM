@@ -11,6 +11,8 @@ class NavStateMachine(StateMachine):
 	def __init__(self):
 		# TODO: 初始化导航任务子状态机
 		StateMachine.__init__(self, outcomes=['succeeded', 'failed', 'preempted'])
+
+
 		with self:
 			StateMachine.add('NAV', PurePursuitState(),
 								   transitions={'succeeded': 'succeeded', 'failed': 'failed', 'preempted': 'preempted'})

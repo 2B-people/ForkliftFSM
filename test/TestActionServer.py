@@ -32,6 +32,8 @@ if __name__ == '__main__':
     # Create action server
     server = actionlib.SimpleActionServer('pure_pursuit', PurePursuitAction, pure_pursuit_callback, False)
     server.start()
+    
+    rospy.loginfo("test_action_server is online")
 
     # Spin node
     rospy.spin()

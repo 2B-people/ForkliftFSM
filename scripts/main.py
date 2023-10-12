@@ -6,11 +6,25 @@ import threading
 
 import smach
 from smach import StateMachine, Concurrence
-from smach_ros import ServiceState, SimpleActionState, IntrospectionServer,set_preempt_handler, MonitorState
+from smach_ros import IntrospectionServer,set_preempt_handler, MonitorState
 
-from ActionState import PurePursuitState
+from ActionState import PurePursuitState,ReLocationState,PickupState,ChargeState
 from APIService import serviceServer
+from SubStateMachine import NavStateMachine,TaskStateMachine,ChargeStateMachine
 
+class RESETState(smach.State):
+	def __init__(self):
+		smach.State.__init__(self, outcomes=['succeeded', 'failed', 'preempted'])
+	def execute(self,userdata):
+		rospy.loginfo('reset fsm')
+		while not rospy.is_shutdown():
+			if self.preempt_requested():
+				# 如果有抢占请求，则停止当前的动作执行，并返回preempted状态
+				self.service_preempt()
+				return 'preempted'
+			
+			#TODO: 重置状态机
+			return 'succeeded'
 
 class IDLEState(smach.State,):
 	def __init__(self,srv):
@@ -52,14 +66,6 @@ class IDLEState(smach.State,):
 				if call_condition == 'CHARGE':
 					self.srv.Call_Finish()
 					return 'charge_call'
-	
-class ReSetState(smach.State):
-	def __init__(self):
-		smach.State.__init__(self, outcomes=['succeeded', 'failed', 'preempted'])
-	def execute(self,userdata):
-		rospy.loginfo('Executing state1')
-		rospy.sleep(1)
-		return 'succeeded'
 
 def main():
 	rospy.init_node("Forkift_fsm_node")
@@ -70,17 +76,34 @@ def main():
 
 	# Create a SMACH state machine
 	sm_root = StateMachine(outcomes=['succeeded', 'failed', 'preempted'])
-	 
+	sm_task = StateMachine(outcomes=['succeeded', 'failed', 'preempted'])
+	
 	with sm_root:
+		StateMachine.add('RESET', RESETState(), 
+				   transitions={'succeeded':'sm_task','preempted':'preempted'})
+		StateMachine.add('sm_task', sm_task,
+				   transitions={'failed':'RESET','preempted':'preempted'})
+	with sm_task:
 		StateMachine.add('IDLE', IDLEState(srv),
-					transitions={'task_call':'state1','nav_call':'nav_cc',
-				  				'reloc_call':'failed','pickup_call':'failed',
-								'charge_call':'failed','preempted':'preempted'})
-		StateMachine.add('state1', state1(), 
-				   transitions={'succeeded':'IDLE','preempted':'preempted'})
+					transitions={'task_call':'task','nav_call':'nav_cc',
+				  				'reloc_call':'reloc_cc','pickup_call':'pickup_cc',
+								'charge_call':'charge_cc','preempted':'preempted'})
+		# 调用task	
+		StateMachine.add('task', TaskStateMachine(),
+				    transitions={'succeeded':'IDLE','preempted':'preempted'})
+
+		# 调用单独的动作action
 		StateMachine.add('nav_cc', PurePursuitState(), 
 				   transitions={'succeeded':'IDLE','preempted':'preempted'})
 	
+		StateMachine.add('reloc_cc', ReLocationState(), 
+				   transitions={'succeeded':'IDLE','preempted':'preempted'})
+
+		StateMachine.add('pickup_cc', PickupState(),
+				   transitions={'succeeded':'IDLE','preempted':'preempted'})
+		
+		StateMachine.add('charge_cc', ChargeState(),
+				   transitions={'succeeded':'IDLE','preempted':'preempted'})
 
 	# Attach a SMACH introspection server
 	sis = IntrospectionServer('fsm_node', sm_root, '/SM_ROOT')

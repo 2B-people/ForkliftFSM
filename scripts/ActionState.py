@@ -101,7 +101,7 @@ class PickupState(smach.State):
 
 			rospy.sleep(0.1)
 
-class ChargeActionState(smach.State):
+class ChargeState(smach.State):
 	# TODO: 拾取的状态机
 	def __init__(self):
 		smach.State.__init__(self, outcomes=['succeeded', 'failed', 'preempted'])

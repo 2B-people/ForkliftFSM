@@ -15,7 +15,6 @@ class CallFSM():
         # idle->task
         self.call_task = rospy.ServiceProxy('fsm_node/fsm_task', SetBool)
         self.call_task.wait_for_service()
-
         #独立调用action的接口
         # idle->nav
         self.call_nav = rospy.ServiceProxy('fsm_node/fsm_nav', SetBool)

@@ -23,12 +23,12 @@ class PurePursuitState(smach.State):
 		end_x = 0.0
 		end_y = 0.0
 
-		# 取出目标点设置
+		# 取出目标点设置,这里只设置了end_xy,起始点不知道
 		if rospy.has_param("fsm_node/end_x") and rospy.has_param("fsm_node/end_y"):
 			end_x = rospy.get_param("fsm_node/end_x")	
 			end_y =rospy.get_param("fsm_node/end_y")
 		else:
-			rospy.logerr("No end point set!")
+			rospy.logerr("FSM: No end point set!")
 			return 'failed'
 		
 		# 发送目标点开始执行导航任务
@@ -43,13 +43,19 @@ class PurePursuitState(smach.State):
 		while not rospy.is_shutdown():
 			if self.preempt_requested():
 				# 如果有抢占请求，则停止当前的动作执行，并返回preempted状态
+				rospy.logwarn("FSM: PurePursuit Action is preempted!")
+				# 中止动作
 				self.client.cancel_goal()
 				self.service_preempt()
 				return 'preempted'
 
 			if self.client.get_state() == actionlib.GoalStatus.SUCCEEDED:
+				rospy.loginfo("PurePursuit Action succeeded!")
+				# 取到达结果
+
 				return 'succeeded'
 			elif self.client.get_state() == actionlib.GoalStatus.ABORTED:
+				rospy.logerr("FSM: PurePursuit Action aborted!")
 				return 'failed'
 
 			rospy.sleep(0.1)
@@ -57,14 +63,15 @@ class PurePursuitState(smach.State):
 		self.service_preempt()
 		return 'failed'
 		
-
+	# 回调函数，打印反馈信息
 	def feedback_cb(self, feedback):
 		rospy.loginfo("Received feedback: {feedback}".format(feedback=feedback))
+		rospy.set_param("fsm_node/car_state",feedback.status)
+		rospy.set_param("fsm_node/cur_x",feedback.cur_xy[0])
+		rospy.set_param("fsm_node/cur_y",feedback.cur_xy[1])
+		rospy.set_param("fsm_node/cur_theta",feedback.cur_theta)
+		rospy.set_param("fsm_node/car_head",feedback.car_head)
 
-
-	def request_preempt(self):
-		smach.State.request_preempt(self)
-		rospy.logwarn("Preempted!")
 
 class ReLocationState(smach.State):
 	# TODO: 重定位的状态机
@@ -81,6 +88,7 @@ class ReLocationState(smach.State):
 			if self.preempt_requested():
 				# 如果有抢占请求，则停止当前的动作执行，并返回preempted状态
 				# self.client.cancel_goal()
+				rospy.logwarn("FSM: ReLocation Action is preempted!")
 				self.service_preempt()
 				return 'preempted'
 
@@ -101,6 +109,7 @@ class PickupState(smach.State):
 	# TODO: 拾取的状态机
 	def __init__(self):
 		smach.State.__init__(self, outcomes=['succeeded', 'failed', 'preempted'])
+		
 		# self.client = actionlib.SimpleActionClient('re_location', PurePursuitAction)
 		# self.client.wait_for_server()
 
@@ -113,7 +122,7 @@ class PickupState(smach.State):
 		if rospy.has_param("fsm_node/is_pickup"):
 			is_pickup = rospy.get_param("fsm_node/is_pickup")	
 		else:
-			rospy.logerr("No end point set!")
+			rospy.logerr("FSM: No pickup set!")
 			return 'failed'
 		
 		# TODO这里需要发送取货或者卸货的动作
@@ -127,7 +136,7 @@ class PickupState(smach.State):
 			# 无动作
 			rospy.loginfo("No action")
 		else:
-			rospy.logerr("get error")
+			rospy.logerr("FSM: is_pickup is set %d,get error", is_pickup)
 			return 'failed'
 
 		# 循环等待被抢占或者动作执行完成
@@ -136,6 +145,7 @@ class PickupState(smach.State):
 				# 如果有抢占请求，则停止当前的动作执行，并返回preempted状态
 				# TODO这里需要取消动作
 				# self.client.cancel_goal()
+				rospy.logwarn("FSM: pickup Action is preempted!")
 				self.service_preempt()
 				return 'preempted'
 			
@@ -153,7 +163,7 @@ class PickupState(smach.State):
 
 
 class ChargeState(smach.State):
-	# TODO: 充电的状态机
+	# TODO: 充电的action状态机
 	def __init__(self):
 		smach.State.__init__(self, outcomes=['succeeded', 'failed', 'preempted'])
 		# self.client = actionlib.SimpleActionClient('re_location', PurePursuitAction)
@@ -167,6 +177,7 @@ class ChargeState(smach.State):
 			if self.preempt_requested():
 				# 如果有抢占请求，则停止当前的动作执行，并返回preempted状态
 				# self.client.cancel_goal()
+				rospy.logwarn("FSM: Charge Action is preempted!")
 				self.service_preempt()
 				return 'preempted'
 

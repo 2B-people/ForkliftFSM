@@ -5,10 +5,10 @@ import rospy
 import threading
 
 import smach
-from smach import StateMachine, Concurrence
-from smach_ros import IntrospectionServer,set_preempt_handler, MonitorState
+from smach import StateMachine, Concurrence,CBState
+from smach_ros import IntrospectionServer,set_preempt_handler
 
-from ActionState import PurePursuitState,ReLocationState,PickupState,ChargeState
+from ActionState import ReLocationState,PickupState
 from APIService import serviceServer
 from SubStateMachine import NavStateMachine,TaskStateMachine,ChargeStateMachine
 
@@ -77,6 +77,7 @@ class SuperVisionState(smach.State):
 		# srv调用
 		self.srv = srv
 		# TODO 监控状态，这里直接用socket链接
+		# TODO 确定哪些情况要强行终止系统
 	
 	def execute(self,userdata):
 		rospy.loginfo('SuperVision state is running')
@@ -93,6 +94,11 @@ class SuperVisionState(smach.State):
 			if call_condition == 'REPAIR_IN':
 				return 'repaired'
 			# TODO 如果有状态不正常，也进入维修态
+			is_need_repair = False
+			# TODO: 机器人状态监控
+			if is_need_repair:
+				self.srv.Set_Repair()
+				return 'repaired'
 
 		#注意，结束后需要退出 
 		return 'succeeded'
@@ -135,41 +141,47 @@ def main():
 		StateMachine.add('RESET', RESETState(), 
 				   transitions={'succeeded':'RUN_SHAPES','failed':'failed'})
 		# 添加并行态（包括监视态和任务子状态机）
-		shape_cc = Concurrence(outcomes=['succeeded','repaired','preempted'],
-							   default_outcome='preempted',
+		shape_cc = Concurrence(outcomes=['succeeded','repaired','preempted','failed'],
+							   default_outcome='repaired',
 							#  当条件不再成立时，要让它杀死同级，唯一需要做的就是给并发一个“子终止回调”。
 							   child_termination_cb = lambda so: True,
-							   outcome_map ={'repaired':{'SuperVision':'repaired'},
-											 'repaired':{'sm_task':'failed'},
-											 'succeeded':{'SuperVision':'succeeded','sm_task':'succeeded'},
-											 'preempted':{'SuperVision':'preempted','sm_task':'preempted'}})
+							   outcome_map ={'repaired':{'MAIN_MONITOR':'repaired','MAIN_TASK':'preempted'},
+											 'failed':{'MAIN_TASK':'failed'},
+											 'succeeded':{'MAIN_MONITOR':'succeeded','MAIN_TASK':'succeeded'},
+											 'preempted':{'MAIN_MONITOR':'preempted','MAIN_TASK':'preempted'}})
 		with shape_cc:
 			# 添加并行态，并行task和监视状态	
-			Concurrence.add('SuperVision',SuperVisionState(srv))
-			Concurrence.add('sm_task', sm_task)
+			Concurrence.add('MAIN_MONITOR',SuperVisionState(srv))
+			Concurrence.add('MAIN_TASK', sm_task)
 			with sm_task:
 				StateMachine.add('IDLE', IDLEState(srv),
-					transitions={'task_call':'task','nav_call':'nav_cc',
-				  				'reloc_call':'reloc_cc','pickup_call':'pickup_cc',
-								'charge_call':'charge_cc','preempted':'preempted'
+					transitions={'task_call':'TASK','nav_call':'NAV_SOLE',
+				  				'reloc_call':'RELOC_SOLE','pickup_call':'PICK_SOLE',
+								'charge_call':'CHARGE','preempted':'preempted'
 								,'failed':'failed'})
 				# 调用task	
-				StateMachine.add('task', TaskStateMachine(),
+				StateMachine.add('TASK', TaskStateMachine(),
 				    transitions={'succeeded':'IDLE','preempted':'preempted','failed':'failed'})
 				# 调用单独的动作action
-				StateMachine.add('nav_cc', PurePursuitState(), 
+				StateMachine.add('NAV_SOLE', NavStateMachine(), 
 				   transitions={'succeeded':'IDLE','preempted':'preempted','failed':'failed'})
 				# 重定位
-				StateMachine.add('reloc_cc', ReLocationState(), 
+				StateMachine.add('RELOC_SOLE', ReLocationState(), 
 				   transitions={'succeeded':'IDLE','preempted':'preempted','failed':'failed'})
 				# 取
-				StateMachine.add('pickup_cc', PickupState(),
+				StateMachine.add('PICK_SOLE', PickupState(),
 				   transitions={'succeeded':'IDLE','preempted':'preempted','failed':'failed'})
 				#充电
-				StateMachine.add('charge_cc', ChargeState(),
+				StateMachine.add('CHARGE', ChargeStateMachine(),
 				   transitions={'succeeded':'IDLE','preempted':'preempted','failed':'failed'})
 				
-		StateMachine.add('RUN_SHAPES',shape_cc,transitions={'repaired':'REPAIR','preempted':'preempted'})
+		StateMachine.add('RUN_SHAPES',shape_cc,transitions={'repaired':'REPAIR','failed':'fail2repair','preempted':'preempted'})
+		# 添加一个任务调用进入failed的处理，然后这里我先直接进入REPAIR态
+		def fail2repair(ud,srv):
+			srv.Set_Repair()
+			return 'succeeded'
+		StateMachine.add('fail2repair',CBState(fail2repair,cb_kwargs={'srv':srv},outcomes={'succeeded'}),
+				   transitions={'succeeded':'REPAIR'})
 		# 添加维修态
 		# 通过接口调用结束状态,重启后回到idle状态
 		StateMachine.add('REPAIR', RepairState(srv),

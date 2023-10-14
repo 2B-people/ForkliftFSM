@@ -47,17 +47,17 @@ class serviceServer():
 	
 	# 慎用，这里只是测试，call_set的值应该由回调函数设置
 	def Set_Call(self,call_set):
-		rospy.logwarn("call_set is set to %s",call_set)
+		rospy.logwarn("FSM: call_set is set to %s",call_set)
 		self.call_set = call_set
 	
 	# 任务调用改变call_set的值
 	def call_change_set(self,set):
-		if self.call_set == "IDLE":
+		if self.call_set == "IDLE" and self.repair_set == "REPAIR_OUT":
 			self.call_set = set
 			return SetBoolResponse(True,"task request received")	
 		else:
-			rospy.logwarn("call task request is true, but fsm is not IDLE")	
-			return SetBoolResponse(False,"call task request is true")
+			rospy.logwarn("FSM: call task failed, fsm is not IDLE or in REPAIR")	
+			return SetBoolResponse(False,"call task request failed")
 
 	# 测试用接口
 	def empty_service_callback(self,request):
@@ -68,7 +68,7 @@ class serviceServer():
 		if request.data:
 			return self.call_change_set("TASK")
 		else:
-			rospy.logwarn("call task request is false")
+			rospy.logwarn("FSM: call task request is false")
 			return SetBoolResponse(False,"call task request is false")
 	# 单独动作调用
 	# 导航
@@ -76,28 +76,28 @@ class serviceServer():
 		if request.data:
 			return self.call_change_set("NAV")
 		else:
-			rospy.logwarn("call task request is false")
+			rospy.logwarn("FSM: call task request is false")
 			return SetBoolResponse(False,"call task request is false")
 	# 重定位
 	def relocation_service_callback(self,request):
 		if request.data:
 			return self.call_change_set("RELOC")
 		else:
-			rospy.logwarn("call task request is false")
+			rospy.logwarn("FSM: call task request is false")
 			return SetBoolResponse(False,"call task request is false")
 	# 拾取
 	def pickup_service_callback(self,request):
 		if request.data:
 			return self.call_change_set("PICKUP")
 		else:
-			rospy.logwarn("call task request is false")
+			rospy.logwarn("FSM: call task request is false")
 			return SetBoolResponse(False,"call task request is false")
 	# 充电
 	def charge_service_callback(self,request):
 		if request.data:
 			return self.call_change_set("CHARGE")
 		else:
-			rospy.logwarn("call task request is false")
+			rospy.logwarn("FSM: call task request is false")
 			return SetBoolResponse(False,"call task request is false")
 		
 	# 进入维修态
@@ -106,7 +106,7 @@ class serviceServer():
 			self.repair_set = "REPAIR_IN"
 			return SetBoolResponse(True,"task request received")	
 		else:
-			rospy.logwarn("call task request is false")
+			rospy.logwarn("FSM: call task request is false")
 			return SetBoolResponse(False,"call task request is false")
 
 	#退出维修态
@@ -115,5 +115,10 @@ class serviceServer():
 			self.repair_set = "REPAIR_OUT"
 			return SetBoolResponse(True,"task request received")	
 		else:
-			rospy.logwarn("call task request is false")
+			rospy.logwarn("FSM: call task request is false")
 			return SetBoolResponse(False,"call task request is false")
+	# 另外一种进入维修态的方法,
+	def Set_Repair(self):
+		self.repair_set = "REPAIR_IN"
+		rospy.logwarn("FSM: robot auto set repair_in, but not call service")
+		return True

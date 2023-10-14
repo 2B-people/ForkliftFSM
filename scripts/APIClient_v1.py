@@ -36,11 +36,14 @@ class CallFSM():
         调用测试接口
         """
         try:
+            # 测试 service通信是否可行，这里只是发送一个空请求
+            # 在状态机端会打印一条日志
+            # rospy.loginfo("Received an empty request. Performing some action.")
             response = self.call_empty()
             rospy.loginfo("send req")
             return response
         except rospy.ServiceException as e:
-            rospy.logerr("TestEmpty Service call failed:")
+            rospy.logerr(" TestEmpty Service call failed:")
             return None
     
     #调用任务接口
@@ -54,14 +57,16 @@ class CallFSM():
             The response from the task service call, or None if the call failed.
         """
         try:
+            # 设置目标，这里只用设置取货点和卸货点，货物卸载后结束该状态，返回IDLE
             rospy.set_param("fsm_node/pickup_x",pickup_xy[0])
             rospy.set_param("fsm_node/pickup_y",pickup_xy[1])
             rospy.set_param("fsm_node/dropoff_x",dropoff_xy[0])
             rospy.set_param("fsm_node/dropoff_y",dropoff_xy[1])
+            # call 调用
             response = self.call_task(True)
             return response
         except rospy.ServiceException as e:
-            rospy.logerr("Task Service call failed:")
+            rospy.logerr(" Task Service call failed:")
             return None
     # 调用导航动作接口
     def CallNav(self,end_xy):
@@ -73,12 +78,14 @@ class CallFSM():
             The response from the navigation service call, or None if the call failed.
         """
         try:
+            # 设置导航目标
             rospy.set_param("fsm_node/end_x",end_xy[0])
             rospy.set_param("fsm_node/end_y",end_xy[1])
+            # call 调用
             response = self.call_nav(True)
             return response                     
         except rospy.ServiceException as e:
-            rospy.logerr("Nav Service call failed:")
+            rospy.logerr(" Nav Service call failed:")
             return None
     # 调用二次定位接口
     def CallRelocation(self):
@@ -91,7 +98,7 @@ class CallFSM():
             response = self.call_relocation(True)
             return response
         except rospy.ServiceException as e:
-            rospy.logerr("Relocation Service call failed:")
+            rospy.logerr(" Relocation Service call failed:")
             return None
     # 调用取货接口
     def CallPickup(self,is_pickup): 
@@ -105,11 +112,13 @@ class CallFSM():
             The response from the pickup service call, or None if the call failed.
         """
         try:
+            # 设置参数,1取货，2卸货
             rospy.set_param("fsm_node/is_pickup",is_pickup)
+            # call 调用
             response = self.call_pickup(True)
             return response
         except rospy.ServiceException as e:
-            rospy.logerr("Pickup Service call failed:")
+            rospy.logerr(" Pickup Service call failed:")
             return None
     # 调用充电接口 
     def CallCharge(self):
@@ -119,11 +128,22 @@ class CallFSM():
             The response from the charge service call, or None if the call failed.
         """
         try:
-            response = self.call_charge(True)
-            return response
+            if rospy.has_param("fsm_node/charge_x") and rospy.has_param("fsm_node/charge_y"):
+                response = self.call_charge(True)
+                return response
+            else:
+                rospy.logerr(" Charge point not set")
         except rospy.ServiceException as e:
-            rospy.logerr("Charge Service call failed:")
-            return None   
+            rospy.logerr(" Charge Service call failed:")
+            return None
+    # 设置充电点
+    def Set_Charge_point(self,charge_xy): 
+        # 充电口所在位置
+        rospy.loginfo("charge point is set to (%f,%f)",charge_xy[0],charge_xy[1])
+        # 写到参数服务器中
+        rospy.set_param("fsm_node/charge_x",charge_xy[0])
+        rospy.set_param("fsm_node/charge_y",charge_xy[1])
+        return True
 
     # 使用ros的参数服务器状态机提供接口读取叉车的状态
     # 注意，这里禁止设置参数，只能读取参数，需要修改，需要调用状态机的srv接口
@@ -142,7 +162,7 @@ class CallFSM():
         if rospy.has_param(name):
             return rospy.get_param(name)
         else:
-            rospy.logwarn("Parameter [%s] not found, defaulting to %.3f" % (name, default))
+            rospy.logerr(" Parameter [%s] not found, defaulting to %.3f" % (name, default))
             return default
         
     # 读取状态机当前正在执行的状态
@@ -155,7 +175,7 @@ class CallFSM():
         if rospy.has_param("fsm_node/active_states"):
             return self.get_param("fsm_node/active_states","NONE")
         else:
-            rospy.logerr("fsm not start")
+            rospy.logerr(" fsm not start")
 
 
 if __name__ == '__main__':

@@ -11,6 +11,13 @@ class CallFSM():
         # 测试用的空请求
         self.call_empty = rospy.ServiceProxy('fsm_node/test_empty', Empty)
         self.call_empty.wait_for_service()
+        # 维修处理的接口
+        # 进入维修状态
+        self.call_repair_in = rospy.ServiceProxy('fsm_node/fsm_repair_in', SetBool)
+        self.call_repair_in.wait_for_service()
+        # 退出维修状态
+        self.call_repair_out = rospy.ServiceProxy('fsm_node/fsm_repair_out', SetBool)
+        self.call_repair_out.wait_for_service()
         # 请求任务的接口
         # idle->task
         self.call_task = rospy.ServiceProxy('fsm_node/fsm_task', SetBool)
@@ -44,6 +51,22 @@ class CallFSM():
             return response
         except rospy.ServiceException as e:
             rospy.logerr(" TestEmpty Service call failed:")
+            return None
+    # 维修进入接口
+    def CallRepairIn(self):
+        try:
+            response = self.call_repair_in(True)
+            return response
+        except rospy.ServiceException as e:
+            rospy.logerr(" Task Service call failed:")
+            return None
+    # 维修出接口
+    def CallRepairOut(self):
+        try:
+            response = self.call_repair_out(True)
+            return response
+        except rospy.ServiceException as e:
+            rospy.logerr(" Task Service call failed:")
             return None
     
     #调用任务接口
@@ -173,7 +196,12 @@ class CallFSM():
         获取状态机的状态
         """
         if rospy.has_param("fsm_node/active_states"):
-            return self.get_param("fsm_node/active_states","NONE")
+            state1 = self.get_param("fsm_node/active_states1","NONE")
+            state2 = self.get_param("fsm_node/active_states2","NONE")
+            state3 = self.get_param("fsm_node/active_states3","NONE")
+
+            state = state1+state2+state3
+            return state
         else:
             rospy.logerr(" fsm not start")
 

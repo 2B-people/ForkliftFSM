@@ -3,7 +3,7 @@
   <node name="test_action_server" pkg="ForkliftFSM" type="TestActionServer.py" output="screen"/>
 
   <!-- 启动main节点 -->
-  <!-- <node name="main" pkg="ForkliftFSM" type="main.py" output="screen"/> -->
+  <node name="main" pkg="ForkliftFSM" type="main.py" output="screen"/>
 
   <!-- 启动smach_viewer节点 -->
   <node name="smach_viewer" pkg="smach_viewer" type="smach_viewer.py"/>

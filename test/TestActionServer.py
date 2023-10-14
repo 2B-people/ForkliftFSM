@@ -6,6 +6,8 @@ import actionlib
 from ForkliftFSM.msg import PurePursuitAction, PurePursuitResult, PurePursuitFeedback
 from std_msgs.msg import Bool
 
+import readchar
+
 def pure_pursuit_callback(goal):
     # Extract start and end points from goal
     start_xy = goal.start_xy
@@ -49,14 +51,17 @@ if __name__ == '__main__':
     pub = rospy.Publisher('is_stop_obstacle', Bool, queue_size=10)
     
     rospy.loginfo("test_action_server is online")
-
-    rate = rospy.Rate(5)
+    
     # 循环等待键盘输入
     while not rospy.is_shutdown():
-        # 根据键盘输入创建Bool消息
-
         msg = Bool(False)
-
+        # key = readchar.readkey()
+        # if key == 's':
+        #     msg = Bool(True)
+        # if key == 'r':
+        #     msg = Bool(False)
+        # if key == 'c':
+        #     break
+        
         # 发布Bool消息
         pub.publish(msg)
-        rate.sleep()

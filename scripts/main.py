@@ -25,6 +25,7 @@ class RESETState(smach.State):
 				return 'preempted'
 			
 			# TODO重置操作
+			# 下面为等待测试代码
 			n+=1
 			rospy.sleep(0.1)	
 			if n == 10:
@@ -54,19 +55,14 @@ class IDLEState(smach.State):
 			if call_condition != 'IDLE':
 				rospy.loginfo('call_condition is %s',call_condition)
 				if call_condition == 'TASK':
-					self.srv.Call_Finish()
 					return 'task_call'
 				if call_condition == 'NAV':
-					self.srv.Call_Finish()
 					return 'nav_call'
 				if call_condition == 'RELOC':
-					self.srv.Call_Finish()
 					return 'reloc_call'
 				if call_condition == 'PICKUP':
-					self.srv.Call_Finish()
 					return 'pickup_call'
 				if call_condition == 'CHARGE':
-					self.srv.Call_Finish()
 					return 'charge_call'
 		#注意，结束后需要退出 
 		return 'failed'
@@ -77,7 +73,6 @@ class SuperVisionState(smach.State):
 		# srv调用
 		self.srv = srv
 		# TODO 监控状态，这里直接用socket链接
-		# TODO 确定哪些情况要强行终止系统
 	
 	def execute(self,userdata):
 		rospy.loginfo('SuperVision state is running')
@@ -94,11 +89,22 @@ class SuperVisionState(smach.State):
 			if call_condition == 'REPAIR_IN':
 				return 'repaired'
 			# TODO 如果有状态不正常，也进入维修态
+			# TODO 确定哪些情况要强行终止系统
 			is_need_repair = False
-			# TODO: 机器人状态监控
 			if is_need_repair:
 				self.srv.Set_Repair()
 				return 'repaired'
+			
+			# TODO 电量小于某个值,强制进行充电
+			is_need_charge = False
+			if is_need_charge:
+				self.srv.charge_Call()
+
+			# TODO: 机器人状态监控,写到参数服务器
+			# ...
+			test_param = 11.0
+			rospy.set_param("fsm_node/test",test_param)
+
 
 		#注意，结束后需要退出 
 		return 'succeeded'
@@ -133,8 +139,9 @@ def main():
 
 	# Create a SMACH state machine
 	sm_root = StateMachine(outcomes=['succeeded', 'failed', 'preempted'])
-	sm_task = StateMachine(outcomes=['succeeded', 'failed', 'preempted'])
-
+	main_task = StateMachine(outcomes=['succeeded', 'failed', 'preempted'])
+	sm_task = TaskStateMachine()
+	charge_task = ChargeStateMachine()
 
 	with sm_root:
 		# 添加重启态
@@ -152,28 +159,35 @@ def main():
 		with shape_cc:
 			# 添加并行态，并行task和监视状态	
 			Concurrence.add('MAIN_MONITOR',SuperVisionState(srv))
-			Concurrence.add('MAIN_TASK', sm_task)
-			with sm_task:
+			Concurrence.add('MAIN_TASK', main_task)
+			with main_task:
 				StateMachine.add('IDLE', IDLEState(srv),
 					transitions={'task_call':'TASK','nav_call':'NAV_SOLE',
 				  				'reloc_call':'RELOC_SOLE','pickup_call':'PICK_SOLE',
 								'charge_call':'CHARGE','preempted':'preempted'
 								,'failed':'failed'})
 				# 调用task	
-				StateMachine.add('TASK', TaskStateMachine(),
-				    transitions={'succeeded':'IDLE','preempted':'preempted','failed':'failed'})
+				StateMachine.add('TASK', sm_task,
+				    transitions={'succeeded':'suc2IDLE','preempted':'preempted','failed':'failed'})
 				# 调用单独的动作action
 				StateMachine.add('NAV_SOLE', NavStateMachine(), 
-				   transitions={'succeeded':'IDLE','preempted':'preempted','failed':'failed'})
+				   transitions={'succeeded':'suc2IDLE','preempted':'preempted','failed':'failed'})
 				# 重定位
 				StateMachine.add('RELOC_SOLE', ReLocationState(), 
-				   transitions={'succeeded':'IDLE','preempted':'preempted','failed':'failed'})
+				   transitions={'succeeded':'suc2IDLE','preempted':'preempted','failed':'failed'})
 				# 取
 				StateMachine.add('PICK_SOLE', PickupState(),
-				   transitions={'succeeded':'IDLE','preempted':'preempted','failed':'failed'})
+				   transitions={'succeeded':'suc2IDLE','preempted':'preempted','failed':'failed'})
 				#充电
-				StateMachine.add('CHARGE', ChargeStateMachine(),
-				   transitions={'succeeded':'IDLE','preempted':'preempted','failed':'failed'})
+				StateMachine.add('CHARGE', charge_task,
+				   transitions={'succeeded':'suc2IDLE','preempted':'preempted','failed':'failed'})
+				# succeeded结束后,处理Call_Finish()
+				def suc2IDLE(ud,srv):
+					srv.Call_Finish()
+					return 'succeeded'
+				# 一个处理Call_Finish()的回调状态
+				StateMachine.add('suc2IDLE',CBState(suc2IDLE,cb_kwargs={'srv':srv},outcomes={'succeeded'}),
+				   transitions={'succeeded':'IDLE'})
 				
 		StateMachine.add('RUN_SHAPES',shape_cc,transitions={'repaired':'REPAIR','failed':'fail2repair','preempted':'preempted'})
 		# 添加一个任务调用进入failed的处理，然后这里我先直接进入REPAIR态
@@ -203,8 +217,18 @@ def main():
 	rate = rospy.Rate(10) # 10hz
 	# Signal ROS shutdown (kill threads in background)
 	while not rospy.is_shutdown():
-		active_states = sm_root.get_active_states()
-		rospy.set_param('fsm_node/active_states',active_states)
+		active_states_1 = sm_root.get_active_states()
+		active_states_2 = main_task.get_active_states()
+		if sm_task.get_active_states() != 'None':
+			active_states_3 = sm_task.get_active_states()
+		elif charge_task.get_active_states() != 'None':
+			active_states_3 = charge_task.get_active_states()
+		else:
+			active_states_3 = 'None'
+				
+		rospy.set_param('fsm_node/active_states1',active_states_1)
+		rospy.set_param('fsm_node/active_states2',active_states_2)
+		rospy.set_param('fsm_node/active_states3',active_states_3)
 		rate.sleep()
 
 

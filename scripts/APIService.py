@@ -95,10 +95,19 @@ class serviceServer():
 	# 充电
 	def charge_service_callback(self,request):
 		if request.data:
-			return self.call_change_set("CHARGE")
+			if rospy.has_param("fsm_node/charge_x") and rospy.has_param("fsm_node/charge_y"):
+				return self.call_change_set("CHARGE")
+			else:
+				rospy.logerr("FSM: charge point is not set")
+				return SetBoolResponse(False,"CHARGE point is not set")
 		else:
 			rospy.logwarn("FSM: call task request is false")
 			return SetBoolResponse(False,"call task request is false")
+	def charge_Call(self):
+		# 强制充电调用
+		if self.call_set == "IDLE" and self.repair_set == "REPAIR_OUT":
+			self.call_set = "CHARGE"
+		return
 		
 	# 进入维修态
 	def repair_in_service_callback(self,request):

@@ -33,7 +33,8 @@ class NavStateMachine(StateMachine):
 				def is_stop_cb(ud,msg):
 					# true == 有障碍物 == invalid，中断导航
 					# false = 无障碍物 == valid，继续导航
-					rospy.logwarn("FSM: car is stop,trans in WAIT_FOR_CLEAR")
+					if msg.data:
+						rospy.logwarn("FSM: car is stop,trans in WAIT_FOR_CLEAR")
 					return not msg.data
 				Concurrence.add('MONITOR',
 								MonitorState('/is_stop_obstacle',Bool,is_stop_cb))

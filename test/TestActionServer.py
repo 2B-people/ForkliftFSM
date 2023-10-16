@@ -19,19 +19,19 @@ def pure_pursuit_callback(goal):
 
     # TODO: Implement Pure Pursuit algorithm
     rospy.sleep(1.0)
-    feedback.status = 0.5
+    feedback.status = 1
     feedback.cur_xy = (end_xy[0]/3, end_xy[1]/3)
     feedback.cur_theta = 1.0
     server.publish_feedback(feedback)
     rospy.sleep(1.0)
-    feedback.status = 0.7
+    feedback.status = 1
     feedback.cur_xy = (end_xy[0]/2, end_xy[1]/2)
     feedback.cur_theta = 0.0
     server.publish_feedback(feedback)
     rospy.sleep(5.0)
 
     # Set final position and orientation in result
-    result.status = 1
+    result.status = 2
     result.final_xy = end_xy
     result.final_theta = 0.0
 

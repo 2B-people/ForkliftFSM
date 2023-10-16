@@ -8,6 +8,7 @@
       "includePath": [
         "/home/nqq/fuel_ws/devel/include/**",
         "/opt/ros/melodic/include/**",
+        "/home/nqq/fsm_ws/devel/include/**",
         "/home/nqq/catkin_ws/devel/include/**",
         "/home/nqq/fuel_ws/src/FUEL/fuel_planner/active_perception/include/**",
         "/home/nqq/catkin_ws/src/Fast-Planner/fast_planner/bspline/include/**",

@@ -28,15 +28,35 @@
     * `TestActionServer.py`: 构建了一个模拟action服务器，用于测试状态机的动作状态
 
 ## 环境依赖
+### 基础依赖
 * 该项目依赖于以下环境
   * ROS Melodic
   * Python 2.7
   * Ubuntu 18.04
 
+* 若要在`Ubuntu 20.04`上实现
+* 需改变python文件开头的声明的python版本
+```python
+#!/usr/bin/env python3
+```
+
+### ros包依赖
 * 该项目依赖于以下ROS包
   * [actionlib](http://wiki.ros.org/actionlib)
   * [smach](http://wiki.ros.org/smach)
   * [smach_ros](http://wiki.ros.org/smach_ros)
+
+
+### 测试用软件依赖
+* [readchar](https://pypi.org/project/readchar/)
+  * 通过命令行下面安装
+```shell
+pip install readchar
+```
+* 在ubuntu20.04上
+```shell
+pip3 install readchar
+```
 
 ## 安装
 * 确保已经安装了ROS Melodic

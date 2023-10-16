@@ -16,6 +16,8 @@
 ```bash
     roslaunch ForkliftFSM test.launch
 ```
+>这里如果在远程终端启动,会无法启动smach_viewer节点,报错,这是正常的,因为smach_viewer是图形界面,需要在本地启动,如果在本地启动,则不会报错
+
 * 运行调用API示例脚本
 
 ```bash

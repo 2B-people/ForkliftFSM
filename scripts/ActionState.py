@@ -12,7 +12,7 @@ class PurePursuitState(smach.State):
 	def __init__(self):
 		smach.State.__init__(self, outcomes=['succeeded', 'failed', 'preempted'])
 		self.client = actionlib.SimpleActionClient('pure_pursuit', PurePursuitAction)
-		# 等待action服务器上线
+		# 1.等待action服务器上线
 		rospy.loginfo("wait for PurePursuit action server")
 		self.client.wait_for_server()
 		rospy.loginfo("PurePursuit action server is online")
@@ -23,7 +23,7 @@ class PurePursuitState(smach.State):
 		end_x = 0.0
 		end_y = 0.0
 
-		# 取出目标点设置,这里只设置了end_xy,起始点不知道
+		# 2.取出目标点设置,这里只设置了end_xy,起始点不知道
 		if rospy.has_param("fsm_node/end_x") and rospy.has_param("fsm_node/end_y"):
 			end_x = rospy.get_param("fsm_node/end_x")	
 			end_y =rospy.get_param("fsm_node/end_y")
@@ -31,11 +31,11 @@ class PurePursuitState(smach.State):
 			rospy.logerr("FSM: No end point set!")
 			return 'failed'
 		
-		# 发送目标点开始执行导航任务
+		# 3.发送目标点开始执行导航任务，这里用action定义的格式
 		goal = PurePursuitGoal()
 		goal.end_xy = [end_x,end_y]
 
-		# 状态机发送目标点，注册反馈函数
+		# 4.状态机发送目标点，注册反馈函数
 		self.client.send_goal(goal,feedback_cb=self.feedback_cb)
 		rospy.loginfo("Sending goal: {goal}".format(goal=goal))
 
@@ -44,20 +44,19 @@ class PurePursuitState(smach.State):
 			if self.preempt_requested():
 				# 如果有抢占请求，则停止当前的动作执行，并返回preempted状态
 				rospy.logwarn("FSM: PurePursuit Action is preempted!")
-				# 中止动作
+				# 5.中止动作
 				self.client.cancel_goal()
 				self.service_preempt()
 				return 'preempted'
-
+			# 6.取到达结果
 			if self.client.get_state() == actionlib.GoalStatus.SUCCEEDED:
 				rospy.loginfo("PurePursuit Action succeeded!")
-				# 取到达结果
-
 				return 'succeeded'
 			elif self.client.get_state() == actionlib.GoalStatus.ABORTED:
 				rospy.logerr("FSM: PurePursuit Action aborted!")
 				return 'failed'
-
+			
+			# 10hz查询结果情况
 			rospy.sleep(0.1)
 		# 结束后要进入一个空状态，否则会报错
 		self.service_preempt()

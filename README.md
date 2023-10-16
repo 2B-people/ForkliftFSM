@@ -27,6 +27,43 @@
     * `TestAPICall.py`: 测试用示例文件，通过读取键盘值，调用`API_Client.py`的API接口调用状态机
     * `TestActionServer.py`: 构建了一个模拟action服务器，用于测试状态机的动作状态
 
+## 环境依赖
+* 该项目依赖于以下环境
+  * ROS Melodic
+  * Python 2.7
+  * Ubuntu 18.04
+
+* 该项目依赖于以下ROS包
+  * [actionlib](http://wiki.ros.org/actionlib)
+  * [smach](http://wiki.ros.org/smach)
+  * [smach_ros](http://wiki.ros.org/smach_ros)
+
+## 安装
+* 确保已经安装了ROS Melodic
+* 安装smach
+```shell
+sudo apt-get install ros-melodic-executive-smach
+```
+* 创建工作空间
+```shell
+mkdir -p ~/catkin_ws/src
+cd ~/catkin_ws/src
+```
+* git下载代码
+```shell
+git clone https://github.com/2B-people/ForkliftFSM.git
+```
+* 编译
+```shell
+cd ..
+catkin_make
+```
+* 加载环境
+```shell
+source devel/setup.bash
+```
+
+
 
 ## 状态机构建
 
@@ -37,3 +74,13 @@
   * 构建思路见xmind文档
 
 ## 测试调用状态机
+
+* 见文档：[TestAPI_Example.md](doc/TestAPI_Example.md)
+
+
+## 可查找参数
+
+* 该状态机的参数都存储在参数服务器中，可以通过`rosparam list`查看
+* 该状态机的参数都存储在`/fsm_node`命名空间下，可以通过`rosparam list /fsm_node`查看
+* fsm的状态有三层，通过`CallFSM.get_active_state()`方法可以获得当前状态
+  * 示例，可以读到：`['RUN_SHAPES', 'TASK', 'nav2pickup']`

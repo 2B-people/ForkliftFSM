@@ -9,22 +9,17 @@
 * 将该包放入catkin工作空间
 * `catkin_make`编译
 * `source devel/setup.bash`加载环境
-* 运行roscore
+
+
+* 运行模拟action，fsm主程序，smach_viewer可视化的测试脚本
 
 ```bash
- roscore
-```
-
-* 运行模拟FSM，service&&param_server接口的测试脚本
-
-```bash
- rosrun ForkliftFSM TestAPIServer.py
+    roslaunch ForkliftFSM test.launch
 ```
 * 运行调用API示例脚本
 
 ```bash
- rosrun ForkliftFSM examples\APIClient_v1.py
+    rosrun ForkliftFSM TestAPICall.py
 ```
 
->!注：这里的API不是最后FSM的API，只是为了测试通信链路是否完整
->完整API请参考FSM的API文档（TODO）
+

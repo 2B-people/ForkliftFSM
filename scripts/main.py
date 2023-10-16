@@ -23,8 +23,7 @@ class RESETState(smach.State):
 				# 如果有抢占请求，则停止当前的动作执行，并返回preempted状态
 				self.service_preempt()
 				return 'preempted'
-			
-			# TODO重置操作
+
 			# 下面为等待测试代码
 			n+=1
 			rospy.sleep(0.1)	
@@ -32,6 +31,13 @@ class RESETState(smach.State):
 				return 'succeeded'
 		
 		#TODO: 重置状态机
+		# 这里把已经实现的参数清空
+		rospy.set_param("fsm_node/is_pickup",0)
+		rospy.set_param("fsm_node/end_x",0.0)
+		rospy.set_param("fsm_node/end_y",0.0)
+		rospy.set_param("fsm_node/pcikup_x",0.0)
+		rospy.set_param("fsm_node/pcikup_y",0.0)
+
 		return 'failed'
 
 class IDLEState(smach.State):
@@ -226,7 +232,7 @@ def main():
 		else:
 			active_states_3 = 'None'
 				
-		rospy.set_param('fsm_node/active_states1',active_states_1)
+		rospy.set_param('fsm_node/active_states',active_states_1)
 		rospy.set_param('fsm_node/active_states2',active_states_2)
 		rospy.set_param('fsm_node/active_states3',active_states_3)
 		rate.sleep()

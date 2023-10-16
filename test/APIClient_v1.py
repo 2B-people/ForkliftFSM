@@ -196,7 +196,7 @@ class CallFSM():
         获取状态机的状态
         """
         if rospy.has_param("fsm_node/active_states"):
-            state1 = self.get_param("fsm_node/active_states1","NONE")
+            state1 = self.get_param("fsm_node/active_states","NONE")
             state2 = self.get_param("fsm_node/active_states2","NONE")
             state3 = self.get_param("fsm_node/active_states3","NONE")
 
